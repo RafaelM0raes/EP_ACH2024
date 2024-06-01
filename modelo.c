@@ -17,7 +17,7 @@ typedef int bool;
 /* Estrutura para representar elementos de uma lista ligada de vertices */
 typedef struct aux{
   int vertice;
-  float peso;
+  int peso;
   struct aux* prox;
 } Aresta;
 
@@ -102,7 +102,7 @@ void printGrafo(Grafo* g){
         Aresta *a = (Aresta*)malloc(sizeof(Aresta));
         a = g->A[i];
         while (a){
-            printf(" -> | {%d} peso: {%f} |", a->vertice, a->peso);
+            printf(" -> | {%d} peso: {%d} |", a->vertice, a->peso);
             a = a->prox;
         }
         printf("\n");
@@ -131,20 +131,94 @@ typedef struct estr {
 } NO;
 
 
+bool buscar(Grafo* g, int atual, int fim, int* cores, int* anterior, int* caixa, int ganhos[]){
+  Aresta *a = (Aresta*)malloc(sizeof(Aresta));
+  a = g->A[atual];
+  while (a){
+    if (a->peso <= caixa[atual] & !(cores[a->vertice])){
+      printf("Aresta {%d}-{%d} %d\n", atual, a->vertice, a->peso);
+      cores[a->vertice] = 1;
+      anterior[a->vertice] = atual;
+      caixa[a->vertice] = caixa[atual] - a->peso + ganhos[a->vertice-1];
+      if (a->vertice == fim){
+        return true;
+      }
+      if (buscar(g, a->vertice, fim, cores, anterior, caixa, ganhos)){
+        return true;
+      } else {
+        cores[a->vertice] = 0;
+        anterior[a->vertice] = -1;
+        caixa[a->vertice] = -1;
+      }
+    }
+    a = a->prox;
+  }
+  return false;
+}
 
+NO* inserirNo(NO* inicio, int valor){
+  NO* atual_no = (NO*)malloc(sizeof(NO));
+  atual_no->adj = valor;
+  if (inicio == NULL){
+    atual_no->prox = NULL;
+  } else {
+    atual_no->prox = inicio;
+  }
+  return atual_no;
+}
+
+NO* montarCaminho(int fim, int* anterior){
+  NO* resultado = NULL; 
+  int atual = fim;
+
+  while (atual != -1){
+    resultado = inserirNo(resultado, atual);
+    atual = anterior[atual];
+  }
+  return resultado;
+}
 
 // funcao principal
 NO *caminho(int N, int A, int ijpeso[], int ganhos[], int inicio, int fim, int* dinheiro){
 	NO* resp = NULL;
 
 	Grafo* g = (Grafo*)malloc(sizeof(Grafo));
-	inicializaGrafo(g, N);
-	for (int i = 1; i<=A; i++){
-		insereAresta(g, ijpeso[i], ijpeso[i+1], ijpeso[i+2]);
+	if (!(inicializaGrafo(g, N))) printf("Error on init graph\n");
+	for (int i = 0; i<A; i++){
+		insereAresta(g, ijpeso[i*3], ijpeso[(3*i)+1], ijpeso[(3*i)+2]);
 	}
+  printGrafo(g);
+  int cores[N+1];
+  for (int i =1; i<=N; i++) cores[i] = 0;
+  int anterior[N+1];
+  for (int i =1; i<=N; i++) anterior[i] = -1;
+  int caixa[N+1];
+  for (int i =1; i<=N; i++) caixa[i] = -1;
 
+  cores[inicio] = 1;
+  caixa[inicio] = *dinheiro;
 
-
+  Aresta *a = (Aresta*)malloc(sizeof(Aresta));
+  a = g->A[inicio];
+  while (a) {
+    if (a->peso <= caixa[inicio] & !(cores[a->vertice])){
+      printf("Aresta {%d}-{%d} %d\n", inicio, a->vertice, a->peso);
+      cores[a->vertice] = 1;
+      anterior[a->vertice] = inicio;
+      caixa[a->vertice] = caixa[inicio] - a->peso + ganhos[a->vertice-1];
+      if (a->vertice == fim){
+        return montarCaminho(fim, anterior);
+      }
+      if (buscar(g, a->vertice, fim, cores, anterior, caixa, ganhos)){
+        return montarCaminho(fim, anterior);
+      } else {
+        cores[a->vertice] = 0;
+        anterior[a->vertice] = -1;
+        caixa[a->vertice] = -1;
+      }
+    }
+    a = a->prox;
+  }
 
 	return resp;
 }
@@ -161,23 +235,27 @@ int main() {
 
 	// exemplo de teste trivial
 
-	int N=3; // grafo de 3 v�rtices numerados de 1..3
-	int ganhos[] = {10, 5, 15}; // o ganho em cada cidade 
+	int N=4; // grafo de 3 v�rtices numerados de 1..3
+	int ganhos[] = {0, 0, 200, 200}; // o ganho em cada cidade 
 
 	// ao criar o grafo, lembre-se de criar um vetor de vertices de tamanho N+1
 	// e despreze o indice zero do vetor
 
-	int A = 3; // 3 arestas 
-	int ijpeso[] = {1,2,10, 2,3,20, 3,1,10};
+	int A = 4; // 3 arestas 
+	int ijpeso[] = {1,2,60, 2,3,40, 1,3,40, 3,4,50};
 
 	int inicio = 1;
-	int fim = 3;
+	int fim = 4;
 	int dinheiro = 50;
 
 	// o EP sera testado com uma serie de chamadas como esta
 	NO* teste = NULL;
 	teste = caminho(N, A, ijpeso, ganhos, inicio, fim, &dinheiro);
-
+  while (teste){
+    printf("%d -> ", teste->adj);
+    teste = teste->prox;
+  }
+  printf("\n");
 }
 
 // por favor nao inclua nenhum c�digo abaixo da fun��o main()
